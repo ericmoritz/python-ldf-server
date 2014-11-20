@@ -16,8 +16,8 @@ BACKEND = load_backend(
     os.environ.get(
         "LDF_SERVER_BACKEND",
         "ldf_server.backends.rdflib_backend.RDFLibBackend?{}".format(
-            "file://{here}/../example.ttl".format(
-                here=os.path.abspath(os.path.dirname(__file__))
+            "file://{}".format(
+                os.path.abspath(os.path.join(os.path.dirname(__file__), "../example.ttl"))
             )
         )
     )
