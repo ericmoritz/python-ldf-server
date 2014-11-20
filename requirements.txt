@@ -7,8 +7,6 @@ execnet==1.2.0
 html5lib==0.999
 isodate==0.5.1
 itsdangerous==0.24
-## !! Could not determine repository location
-ldf-server==0.0.0
 mercurial==3.0
 pep8==1.5.7
 py==1.4.26
