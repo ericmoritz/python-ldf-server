@@ -37,6 +37,7 @@ def index():
     graph = _response_graph(request.base_url, _fix_fragments(request.url), triples)
     response = make_response(graph.serialize(format="turtle"))
     response.headers['Content-Type'] = "text/turtle"
+    response.cache_control.max_age = 30
     return response
 
 
