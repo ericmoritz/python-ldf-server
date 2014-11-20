@@ -23,6 +23,10 @@ BACKEND = load_backend(
     )
 )
 
+def _fix_fragments(url):
+    # substitute the #'s for %23
+    return url.replace("#", "%23")
+
 
 @app.route("/")
 def index():
@@ -30,18 +34,22 @@ def index():
         [request.args.get(x, '') for x in ['s', 'p', 'o']]
     )
     triples = BACKEND.triples(triple_pattern)
-    graph = _response_graph(request.base_url, request.url, triples)
+    graph = _response_graph(request.base_url, _fix_fragments(request.url), triples)
     response = make_response(graph.serialize(format="turtle"))
     response.headers['Content-Type'] = "text/turtle"
     return response
 
 
 def _response_graph(root_uri, request_uri, triples):
+    count = 0
     g = Graph()
-    g += triples
+    for triple in triples:
+        g.add(triple)
+        count += 1
 
     # TODO Hydra controls
     dataset_uri = URIRef(root_uri + "#dataset")
+    request_uri = URIRef(request_uri)
     template_bnode = BNode()
     s_mapping_bnode = BNode()
     p_mapping_bnode = BNode()
@@ -50,8 +58,11 @@ def _response_graph(root_uri, request_uri, triples):
     g += [
         (dataset_uri, rdf.type, void.Dataset),
         (dataset_uri, rdf.type, hydra.Collection),
-        (dataset_uri, void.subset, URIRef(request_uri)),
+        (dataset_uri, void.subset, request_uri),
         (dataset_uri, hydra.search, template_bnode),
+        (request_uri, rdf.type, hydra.Collection),
+        (request_uri, hydra.totalItems, Literal(count)),
+        (request_uri, void.triples, Literal(count)),
         (template_bnode, hydra.template, Literal(root_uri + "{?s,p,o}")),
         (template_bnode, hydra.mapping, s_mapping_bnode),
         (template_bnode, hydra.mapping, p_mapping_bnode),
