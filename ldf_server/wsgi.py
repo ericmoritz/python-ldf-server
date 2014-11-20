@@ -176,5 +176,6 @@ datatype=rdflib.term.URIRef(u'http://www.w3.org/2001/XMLSchema#integer'))
         raise ValueError("{} is not a valid string literal".format(s))
 
 
+application = app
 if __name__ == '__main__':
     app.run()
