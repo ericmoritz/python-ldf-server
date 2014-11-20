@@ -1,0 +1,8 @@
+PREFIX foaf: <http://xmlns.com/foaf/0.1/> 
+PREFIX doap: <http://usefulinc.com/ns/doap#> 
+
+SELECT ?project ?maintainer WHERE {
+       ?p doap:name ?project .
+       ?p doap:maintainer ?m .
+       ?m foaf:name ?maintainer .
+}
