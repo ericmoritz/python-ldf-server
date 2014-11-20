@@ -29,10 +29,7 @@ def index():
     triple_pattern = _triple_pattern(
         [request.args.get(x, '') for x in ['s', 'p', 'o']]
     )
-    if triple_pattern != (None, None, None):
-        triples = BACKEND.triples(triple_pattern)
-    else:
-        triples = []    
+    triples = BACKEND.triples(triple_pattern)
     graph = _response_graph(request.base_url, request.url, triples)
     response = make_response(graph.serialize(format="turtle"))
     response.headers['Content-Type'] = "text/turtle"
