@@ -1,6 +1,7 @@
 from abc import ABCMeta, abstractmethod
 from urlparse import urlparse
 from importlib import import_module
+from collections import namedtuple
 
 
 def load_backend(uri):
@@ -16,6 +17,9 @@ def _split_module_path(path):
     return ".".join(bits[:-1]), bits[-1]
 
 
+TriplesResult = namedtuple('TriplesResult', ['total_triples', 'next', 'triples'])
+
+
 class Backend:
     __metaclass__ = ABCMeta
 
@@ -24,5 +28,5 @@ class Backend:
         pass
 
     @abstractmethod
-    def triples(self, triple_pattern):
+    def triples(self, triple_pattern, start=None):
         pass

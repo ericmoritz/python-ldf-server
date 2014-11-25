@@ -2,8 +2,9 @@ import re
 import os
 from rdflib import Graph, Namespace
 from rdflib.term import URIRef, Literal, BNode
-from flask import Flask, request, make_response
-from ldf_server.backends.backend import load_backend
+from flask import Flask, request, make_response, url_for
+from ldf_server.backends.backend import load_backend, TriplesResult
+
 
 app = Flask(__name__)
 app.config['DEBUG'] = True
@@ -17,11 +18,16 @@ BACKEND = load_backend(
         "LDF_SERVER_BACKEND",
         "ldf_server.backends.rdflib_backend.RDFLibBackend?{}".format(
             "file://{}".format(
-                os.path.abspath(os.path.join(os.path.dirname(__file__), "../example.ttl"))
+                os.path.abspath(
+                    os.path.join(
+                        os.path.dirname(__file__), "../example.ttl"
+                    )
+                )
             )
         )
     )
 )
+
 
 def _fix_fragments(url):
     # substitute the #'s for %23
@@ -33,18 +39,41 @@ def index():
     triple_pattern = _triple_pattern(
         [request.args.get(x, '') for x in ['s', 'p', 'o']]
     )
-    triples = BACKEND.triples(triple_pattern)
-    graph = _response_graph(request.base_url, _fix_fragments(request.url), triples)
+
+    start_index = request.args.get('start', '')
+
+    triples_result = BACKEND.triples(
+        triple_pattern,
+        start_index=start_index
+    )
+
+    if triples_result.next is not None:
+        next_page_uri = url_for(
+            'index',
+            s=triple_pattern[0],
+            p=triple_pattern[1],
+            o=triple_pattern[2],
+            start=triples_result.next
+        )
+    else:
+        next_page_uri = None
+
+    graph = _response_graph(
+        request.base_url,
+        _fix_fragments(request.url),
+        triples_result,
+        next_page_uri
+    )
     response = make_response(graph.serialize(format="turtle"))
     response.headers['Content-Type'] = "text/turtle"
     response.cache_control.max_age = 30
     return response
 
 
-def _response_graph(root_uri, request_uri, triples):
+def _response_graph(root_uri, request_uri, triples_result, next_page_uri):
     count = 0
     g = Graph()
-    for triple in triples:
+    for triple in triples_result.triples:
         g.add(triple)
         count += 1
 
@@ -56,13 +85,17 @@ def _response_graph(root_uri, request_uri, triples):
     p_mapping_bnode = BNode()
     o_mapping_bnode = BNode()
 
+    if next_page_uri:
+        g.add( (request_uri, hydra.nextPage, URIRef(next_page_uri)) )
+
     g += [
         (dataset_uri, rdf.type, void.Dataset),
         (dataset_uri, rdf.type, hydra.Collection),
+        (dataset_uri, rdf.type, hydra.PagedCollection),
         (dataset_uri, void.subset, request_uri),
         (dataset_uri, hydra.search, template_bnode),
         (request_uri, rdf.type, hydra.Collection),
-        (request_uri, hydra.totalItems, Literal(count)),
+        (request_uri, hydra.totalItems, Literal(triples_result.total_triples)),
         (request_uri, void.triples, Literal(count)),
         (template_bnode, hydra.template, Literal(root_uri + "{?s,p,o}")),
         (template_bnode, hydra.mapping, s_mapping_bnode),
@@ -76,7 +109,7 @@ def _response_graph(root_uri, request_uri, triples):
         (p_mapping_bnode, hydra.property, rdf.predicate),
         (o_mapping_bnode, hydra.property, rdf.object),
     ]
-    
+
     return g
 
 
